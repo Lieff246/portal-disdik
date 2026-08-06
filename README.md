@@ -1,48 +1,87 @@
-# Portal Pemetaan Disdik
+# Portal Pemetaan Disdik — Backend API
 
-Aplikasi web untuk pemetaan data sekolah (SMA/SMK/SLB) di lingkungan Dinas Pendidikan. Dibangun di atas Laravel 13 dengan frontend React + Inertia.js.
+Backend API untuk aplikasi pemetaan data sekolah Provinsi Sulawesi Tengah. Dibangun dengan Laravel 13 sebagai pure REST API yang dikonsumsi oleh frontend React secara terpisah.
 
 ## Tech Stack
 
 | Layer | Teknologi |
 |---|---|
 | Backend | Laravel 13, PHP 8.3+ |
-| Frontend | React 19, TypeScript, Inertia.js |
-| Styling | Tailwind CSS v4, shadcn/ui |
-| Auth | Laravel Fortify (login, register, 2FA, passkey) |
+| Auth API | Laravel Sanctum |
+| Auth User | Laravel Fortify (login, register, 2FA, passkey) |
 | Role & Permission | Spatie Laravel Permission |
-| Build Tool | Vite |
 | Database | MySQL |
 
-## Fitur yang Sudah Ada
+## Arsitektur
 
-### Autentikasi
-- Login & Register
-- Forgot Password & Reset Password
-- Email Verification
-- Two-Factor Authentication (2FA)
-- Passkey (WebAuthn)
+```
+Frontend React (repo terpisah)
+        ↕ HTTP / JSON
+Backend Laravel (repo ini)
+        ↕ Eloquent ORM
+    MySQL Database
+```
 
-### Settings User
-- Edit profil (nama, email)
-- Ganti password
-- Kelola 2FA & Passkey
-- Appearance (dark/light mode)
+Laravel di repo ini **hanya berfungsi sebagai API Backend**. Tidak ada halaman Blade atau Inertia. Semua response dalam format JSON.
 
-### Role & Permission
-- Integrasi Spatie Laravel Permission
-- User terhubung ke Cabang Dinas
+## Struktur Database
 
-### Struktur Data Sekolah
-- **`sekolah`** — data utama sekolah (nama, NPSN, koordinat, jenjang, akreditasi, jumlah siswa, daya tampung, status 3T, wilayah terpencil/perbatasan/transmigrasi)
-- **`school_sma`** — detail SMA/SMK/SLB (kepala sekolah, NIP, no HP, polygon wilayah)
-- **`cabang_dinas`** — cabang dinas pendidikan beserta koordinat peta dan daftar kabupaten/kota
+| Tabel | Keterangan |
+|---|---|
+| `sekolah` | Data utama semua sekolah PAUD-SMA Sulawesi Tengah (dari Dapodik) |
+| `school_sma` | Detail tambahan SMA/SMK/SLB — kepsek, polygon wilayah |
+| `cabang_dinas` | 6 wilayah cabang dinas pendidikan provinsi |
+| `users` | Admin dengan role berbasis wilayah |
+
+Relasi utama: `sekolah.npsn ↔ school_sma.npsn`
+
+## Roles
+
+| Role | Akses |
+|---|---|
+| `admin_provinsi` | Semua sekolah Sulawesi Tengah |
+| `admin_cabdis` | SMA/SMK/SLB wilayah cabang dinasnya |
+| `admin_kab_kota` | PAUD-SMP kabupaten/kota yang ditentukan |
+
+## API Endpoints
+
+Base URL: `http://127.0.0.1:8000/api/v1`
+
+### Auth
+
+| Method | Endpoint | Keterangan |
+|---|---|---|
+| POST | `/login` | Login, return Bearer token |
+| POST | `/logout` | Logout, hapus token (perlu Bearer token) |
+
+### Public (tanpa login)
+
+| Method | Endpoint | Keterangan |
+|---|---|---|
+| GET | `/portal/landing` | Data summary + statistik untuk halaman utama |
+| GET | `/sekolah` | List sekolah untuk marker peta |
+| GET | `/sekolah?jenjang=SMA` | Filter by jenjang (SD/SMP/SMA/SMK/TK/dll) |
+| GET | `/sekolah?kode_kabupaten=7271` | Filter by kode kabupaten |
+| GET | `/sekolah?is_3t=true` | Filter sekolah wilayah 3T |
+| GET | `/sekolah/{npsn}` | Detail satu sekolah by NPSN |
+| GET | `/statistik/kabupaten` | Statistik jumlah sekolah per kabupaten/kota |
+| GET | `/statistik/jenjang` | Statistik jumlah sekolah per jenjang |
+| GET | `/cabang-dinas` | List 6 wilayah cabang dinas |
+
+### Protected (perlu login — Bearer Token)
+
+| Method | Endpoint | Keterangan |
+|---|---|---|
+| GET | `/user` | Info user yang sedang login |
+| GET | `/admin/sekolah` | List sekolah (admin) |
+| POST | `/admin/sekolah` | Tambah sekolah |
+| PUT | `/admin/sekolah/{id}` | Update sekolah |
+| DELETE | `/admin/sekolah/{id}` | Hapus sekolah |
 
 ## Requirements
 
 - PHP 8.3+
 - Composer
-- Node.js & npm
 - MySQL
 
 ## Setup
@@ -56,7 +95,6 @@ cd disdik-pemetaan
 ### 2. Install dependencies
 ```bash
 composer install
-npm install
 ```
 
 ### 3. Konfigurasi environment
@@ -86,48 +124,53 @@ php artisan migrate
 ```
 
 ### 6. Seed data awal
+> Pastikan file `sekolah.sql` dan `database sma.sql` sudah ada di folder `database/seeders/` sebelum menjalankan seeder. File SQL tidak di-commit ke repo karena ukurannya besar — minta ke anggota tim.
+
 ```bash
 php artisan db:seed
 ```
 
-### 7. Build assets
-```bash
-npm run build
-```
+Seeder akan menjalankan:
+- `RoleSeeder` — buat 3 roles (admin_provinsi, admin_cabdis, admin_kab_kota)
+- `CabangDinasSeeder` — buat 6 wilayah cabang dinas
+- `DataSekolahImporterSeeder` — import data sekolah dari file SQL
 
-### 8. Jalankan server
-```bash
-composer run dev
-```
-
-Atau hanya PHP server:
+### 7. Jalankan server
 ```bash
 php artisan serve
 ```
 
-Akses di `http://127.0.0.1:8000`
+API siap diakses di `http://127.0.0.1:8000/api/v1`
 
 ## Struktur Folder Penting
 
 ```
 app/
-├── Actions/Fortify/        # Logic register & reset password
-├── Http/
-│   ├── Controllers/Settings/  # Profile & Security controller
-│   └── Middleware/            # Inertia & Appearance middleware
+├── Http/Controllers/Api/
+│   ├── Admin/SekolahController.php   # CRUD sekolah (protected)
+│   ├── CabangDinasController.php     # Data cabang dinas
+│   ├── PortalController.php          # Data landing page
+│   ├── SekolahController.php         # List & detail sekolah
+│   └── StatistikController.php       # Statistik per kabupaten & jenjang
 ├── Models/
-│   ├── User.php            # User dengan HasRoles & relasi CabangDinas
-│   ├── CabangDinas.php     # Cabang dinas pendidikan
-│   ├── Sekolah.php         # Data utama sekolah
-│   └── SchoolSma.php       # Detail SMA/SMK/SLB
-resources/js/
-├── pages/                  # Halaman React (auth, dashboard, settings)
-├── components/             # Komponen UI (shadcn/ui + custom)
-├── layouts/                # Layout app & auth
-└── hooks/                  # Custom React hooks
+│   ├── User.php                      # User dengan HasRoles & relasi CabangDinas
+│   ├── CabangDinas.php               # Cabang dinas pendidikan
+│   ├── Sekolah.php                   # Data utama sekolah + scopes filter
+│   └── SchoolSma.php                 # Detail SMA/SMK/SLB
+routes/
+├── api.php                           # Semua endpoint API
+└── settings.php                      # Route settings user (profile, security)
+database/
+├── migrations/                       # Struktur tabel
+└── seeders/
+    ├── RoleSeeder.php
+    ├── CabangDinasSeeder.php
+    └── DataSekolahImporterSeeder.php  # Import dari file SQL
 ```
 
-## Catatan
+## CORS
 
-- Dashboard masih dalam tahap pengembangan (placeholder)
-- Fitur pemetaan (map view) belum diimplementasi
+Saat development, semua origin diizinkan (`*`). Sebelum deploy ke production, ubah `config/cors.php`:
+```php
+'allowed_origins' => ['https://domain-frontend.com'],
+```
