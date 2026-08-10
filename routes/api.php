@@ -50,7 +50,15 @@ Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
 
     // Info user yang sedang login
     Route::get('/user', function (Request $request) {
-        return $request->user()->load('cabangDinas');
+        $user = $request->user();
+        return response()->json([
+            'id'               => $user->id,
+            'name'             => $user->name,
+            'email'            => $user->email,
+            'role'             => $user->role,
+            'cabang_dinas_id'  => $user->cabang_dinas_id,
+            'kode_kabupaten'   => $user->kode_kabupaten,
+        ]);
     });
 
     // Admin: Kelola data sekolah

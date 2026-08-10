@@ -25,18 +25,28 @@ class AuthController extends Controller
         }
 
         $user  = User::where('email', $request->email)->firstOrFail();
-        $token = $user->createToken('api-token')->plainTextToken;
+
+        // Token expired otomatis setelah 7 hari
+        // Ini mencegah token bocor bisa dipakai selamanya
+        $token = $user->createToken(
+            'api-token',
+            ['*'],
+            now()->addDays(7)
+        )->plainTextToken;
 
         return response()->json([
-            'status' => 'success',
-            'token'  => $token,
-            'user'   => [
-                'id'             => $user->id,
-                'name'           => $user->name,
-                'email'          => $user->email,
-                'roles'          => $user->getRoleNames(),
-                'cabang_dinas'   => $user->cabangDinas,
-                'kode_kabupaten' => $user->kode_kabupaten,
+            'status'  => 'success',
+            'message' => 'Login berhasil',
+            'data'    => [
+                'user' => [
+                    'id'               => $user->id,
+                    'name'             => $user->name,
+                    'email'            => $user->email,
+                    'role'             => $user->role, // Role pertama (admin_provinsi/cabdis/kab_kota)
+                    'cabang_dinas_id'  => $user->cabang_dinas_id,
+                    'kode_kabupaten'   => $user->kode_kabupaten,
+                ],
+                'token' => $token,
             ],
         ]);
     }

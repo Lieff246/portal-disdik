@@ -29,7 +29,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'email', 'password', 'cabang_dinas_id', 'kode_kabupaten'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements PasskeyUser
 {
@@ -48,6 +48,17 @@ class User extends Authenticatable implements PasskeyUser
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
         ];
+    }
+    
+    /**
+     * Accessor untuk mendapatkan role pertama user.
+     * Karena 1 user hanya punya 1 role di sistem ini.
+     *
+     * @return string|null
+     */
+    public function getRoleAttribute(): ?string
+    {
+        return $this->roles->first()?->name;
     }
     
     public function cabangDinas()

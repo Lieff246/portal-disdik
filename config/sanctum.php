@@ -50,7 +50,7 @@ return [
     |
     */
 
-    'expiration' => null,
+    'expiration' => 60 * 24 * 7, // Token expired setelah 7 hari (nilai dalam menit)
 
     /*
     |--------------------------------------------------------------------------

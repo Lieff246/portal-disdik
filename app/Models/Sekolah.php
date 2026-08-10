@@ -10,25 +10,71 @@ class Sekolah extends Model
     protected $primaryKey = ['sekolah_id', 'semester_id'];
     public $incrementing = false;
     protected $guarded = [];
-    
-    public function scopeByJenjang($query, $jenjang) {
+
+    /**
+     * Cast kolom agar tipe data dikembalikan dengan benar ke frontend.
+     * Tanpa ini, boolean is_3t bisa kembali sebagai "0"/"1" string.
+     */
+    protected function casts(): array
+    {
+        return [
+            'is_3t'            => 'boolean',
+            'is_sekolah_alam'  => 'boolean',
+            'lintang'          => 'float',
+            'bujur'            => 'float',
+            'jumlah_siswa'     => 'integer',
+            'daya_tampung'     => 'integer',
+            'daya_listrik'     => 'integer',
+            'luas_tanah_milik'       => 'integer',
+            'luas_tanah_bukan_milik' => 'integer',
+            'tanggal_sk_pendirian'        => 'date',
+            'tanggal_sk_izin_operasional' => 'date',
+            'create_date' => 'datetime',
+            'last_update' => 'datetime',
+        ];
+    }
+
+    // ── Scopes ────────────────────────────────────────────────────────────────
+
+    public function scopeByJenjang($query, string $jenjang)
+    {
         return $query->where('bentuk_pendidikan', $jenjang);
     }
-    
-    public function scopeByKabupaten($query, $kodeKab) {
+
+    public function scopeByKabupaten($query, string $kodeKab)
+    {
         return $query->where('kode_kabupaten', $kodeKab);
     }
-    
-    public function scopeWilayah3T($query) {
-        return $query->where(function($q) {
+
+    public function scopeWilayah3T($query)
+    {
+        return $query->where(function ($q) {
             $q->where('is_3t', true)
               ->orWhere('wilayah_terpencil', '1')
               ->orWhere('wilayah_perbatasan', '1')
               ->orWhere('wilayah_transmigrasi', '1');
         });
     }
-    
-    public function detailSma() {
+
+    /**
+     * Scope untuk mengambil hanya data semester terbaru.
+     * Contoh: Sekolah::latestSemester()->get()
+     */
+    public function scopeLatestSemester($query)
+    {
+        $latest = static::max('semester_id');
+        return $query->where('semester_id', $latest);
+    }
+
+    // ── Relasi ────────────────────────────────────────────────────────────────
+
+    /**
+     * Relasi ke tabel school_sma — data detail SMA/SMK/SLB
+     * (kepala sekolah, polygon gedung, koordinat akurat, dll).
+     * Join via npsn (tanpa FK constraint di database).
+     */
+    public function detailSma()
+    {
         return $this->hasOne(SchoolSma::class, 'npsn', 'npsn');
     }
 }

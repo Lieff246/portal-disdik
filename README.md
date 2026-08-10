@@ -1,12 +1,19 @@
 # Portal Pemetaan Disdik — Backend API
 
-Backend API untuk aplikasi pemetaan data sekolah Provinsi Sulawesi Tengah. Dibangun dengan Laravel 13 sebagai pure REST API yang dikonsumsi oleh frontend React secara terpisah.
+Backend API untuk aplikasi pemetaan data sekolah Provinsi Sulawesi Tengah. Dibangun dengan Laravel 11 sebagai pure REST API yang dikonsumsi oleh frontend React secara terpisah.
+
+## 📚 Dokumentasi
+
+- **[DOKUMENTASI BACKEND](DOKUMENTASI_BACKEND.md)** — Untuk backend developer (kamu)
+- **[DOKUMENTASI API UNTUK FRONTEND](DOKUMENTASI_API_UNTUK_FRONTEND.md)** — Untuk frontend developer (teman kamu)
+- **[QUICK TEST](QUICK_TEST.md)** — Test API sebelum push
+- **[CHECKLIST SEBELUM PUSH](CHECKLIST_SEBELUM_PUSH.md)** — Apa yang harus dicek
 
 ## Tech Stack
 
 | Layer | Teknologi |
 |---|---|
-| Backend | Laravel 13, PHP 8.3+ |
+| Backend | Laravel 11, PHP 8.3+ |
 | Auth API | Laravel Sanctum |
 | Auth User | Laravel Fortify (login, register, 2FA, passkey) |
 | Role & Permission | Spatie Laravel Permission |
