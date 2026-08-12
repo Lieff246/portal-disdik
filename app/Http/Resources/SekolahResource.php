@@ -48,7 +48,26 @@ class SekolahResource extends JsonResource
             'last_update'      => $this->last_update?->toIso8601String(),
 
             // Relasi lain jika di-load (misalnya detailSma)
-            'detail_sma'       => $this->whenLoaded('detailSma'),
+            'detail_sma' => $this->whenLoaded('detailSma', function() {
+                $ds = $this->detailSma;
+                return $ds ? [
+                    'id' => $ds->id,
+                    'name' => $ds->name,
+                    'grade' => $ds->grade,
+                    'status' => $ds->status,
+                    'kecamatan' => $ds->kecamatan,
+                    'city' => $ds->city,
+                    'kepsek' => $ds->kepsek,
+                    'nip_kepsek' => $ds->nip_kepsek,
+                    'no_hp_kepsek' => $ds->no_hp_kepsek,
+                    'status_kepsek' => $ds->status_kepsek,
+                    'address' => $ds->address,
+                    'npsn' => $ds->npsn,
+                    'latitude' => $ds->latitude,
+                    'longitude' => $ds->longitude,
+                    'polygon' => $ds->polygon,
+                ] : null;
+            }),
         ];
     }
 }

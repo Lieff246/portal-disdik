@@ -30,6 +30,12 @@ Route::prefix('v1')->group(function () {
     // Dashboard / Landing — data utama untuk halaman publik
     Route::get('/portal/landing', [\App\Http\Controllers\Api\PortalController::class, 'landing']);
 
+    // Data peta wilayah cabang dinas (sekolah + summary per wilayah)
+    Route::get('/portal/region-detail', [\App\Http\Controllers\Api\PortalController::class, 'regionDetail']);
+
+    // Detail sekolah untuk halaman sekolahku (polygon + stats)
+    Route::get('/portal/school-detail/{npsn}', [\App\Http\Controllers\Api\PortalController::class, 'schoolDetail']);
+
     // Data Sekolah — untuk render marker peta
     Route::get('/sekolah', [\App\Http\Controllers\Api\SekolahController::class, 'index']);
     Route::get('/sekolah/{npsn}', [\App\Http\Controllers\Api\SekolahController::class, 'show']);
@@ -41,6 +47,19 @@ Route::prefix('v1')->group(function () {
     // Cabang Dinas
     Route::get('/cabang-dinas', [\App\Http\Controllers\Api\CabangDinasController::class, 'index']);
 
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// LEGACY API COMPATIBILITY
+// Endpoint ini untuk backward compatibility dengan frontend yang sudah ada.
+// Frontend expect endpoint dengan nama berbeda, jadi kita buat alias di sini.
+// ═════════════════════════════════════════════════════════════════════════════
+Route::prefix('v1')->group(function () {
+    // Alias: /portal/landing-data → /portal/landing
+    Route::get('/portal/landing-data', [\App\Http\Controllers\Api\PortalController::class, 'landing']);
+    
+    // Endpoint baru: school-map-data (untuk detail peta + nearby schools)
+    Route::get('/portal/school-map-data/{npsn}', [\App\Http\Controllers\Api\PortalController::class, 'schoolMapData']);
 });
 
 // =====================================================
