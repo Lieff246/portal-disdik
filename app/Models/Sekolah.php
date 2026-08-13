@@ -59,11 +59,26 @@ class Sekolah extends Model
     /**
      * Scope untuk mengambil hanya data semester terbaru.
      * Contoh: Sekolah::latestSemester()->get()
+     *
+     * semester_id di-cache selama 10 menit agar tidak query MAX()
+     * ke DB setiap kali scope ini dipanggil (landing() memanggil ~9x).
+     * Cache otomatis batal jika ada data import baru via artisan/seeder.
      */
     public function scopeLatestSemester($query)
     {
-        $latest = static::max('semester_id');
+        $latest = \Cache::remember('sekolah_latest_semester_id', 600, function () {
+            return static::max('semester_id');
+        });
         return $query->where('semester_id', $latest);
+    }
+
+    /**
+     * Batal-kan cache semester_id — panggil setelah import/seeder data baru.
+     * Contoh: Sekolah::clearSemesterCache();
+     */
+    public static function clearSemesterCache(): void
+    {
+        \Cache::forget('sekolah_latest_semester_id');
     }
 
     // ── Relasi ────────────────────────────────────────────────────────────────

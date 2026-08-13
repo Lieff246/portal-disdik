@@ -44,6 +44,9 @@ Route::prefix('v1')->group(function () {
     Route::get('/statistik/kabupaten', [\App\Http\Controllers\Api\StatistikController::class, 'byKabupaten']);
     Route::get('/statistik/jenjang', [\App\Http\Controllers\Api\StatistikController::class, 'byJenjang']);
 
+    // Statistik SMA/SMK/SLB dari tabel school_sma (kewenangan Provinsi)
+    Route::get('/statistik/sma-provinsi', [\App\Http\Controllers\Api\StatistikController::class, 'byGradeProvinsi']);
+
     // Cabang Dinas
     Route::get('/cabang-dinas', [\App\Http\Controllers\Api\CabangDinasController::class, 'index']);
 
