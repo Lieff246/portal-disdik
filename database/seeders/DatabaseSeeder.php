@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             CabangDinasSeeder::class,
             UserSeeder::class,
             DataSekolahImporterSeeder::class,
+            SchoolSmaSeeder::class, // ← Data SMA/SMK/SLB (466 records)
         ]);
     }
 }

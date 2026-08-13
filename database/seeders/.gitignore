@@ -1,0 +1,9 @@
+# File SQL besar (harus didownload terpisah)
+*.sql
+
+# Kecuali README
+!README.md
+
+# File temporary
+temp_*.sql
+final_*.sql
