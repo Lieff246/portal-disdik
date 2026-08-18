@@ -25,10 +25,17 @@ class StatistikController extends Controller
                     kabupaten,
                     kode_kabupaten,
                     COUNT(*) as total_sekolah,
-                    SUM(CASE WHEN bentuk_pendidikan IN ("SMA","SMK","SLB") THEN 1 ELSE 0 END) as total_sma,
-                    SUM(CASE WHEN bentuk_pendidikan = "SMP" THEN 1 ELSE 0 END) as total_smp,
-                    SUM(CASE WHEN bentuk_pendidikan = "SD" THEN 1 ELSE 0 END) as total_sd,
-                    SUM(CASE WHEN bentuk_pendidikan IN ("TK","KB","SPS","TPA") THEN 1 ELSE 0 END) as total_paud,
+
+                    -- Wewenang PROVINSI: SMA/SMK/SLB (dan setara)
+                    SUM(CASE WHEN bentuk_pendidikan IN ("SMA","MA","SMK","SLB","SMTK") THEN 1 ELSE 0 END) as total_sma_provinsi,
+
+                    -- Wewenang KABUPATEN: PAUD s/d SMP (dan setara)
+                    SUM(CASE WHEN bentuk_pendidikan IN ("TK","KB","SPS","TPA","RA") THEN 1 ELSE 0 END) as total_paud,
+                    SUM(CASE WHEN bentuk_pendidikan IN ("SD","MI") THEN 1 ELSE 0 END) as total_sd,
+                    SUM(CASE WHEN bentuk_pendidikan IN ("SMP","MTs") THEN 1 ELSE 0 END) as total_smp,
+                    SUM(CASE WHEN bentuk_pendidikan IN ("TK","KB","SPS","TPA","RA","SD","MI","SMP","MTs") THEN 1 ELSE 0 END) as total_paud_smp,
+
+                    -- Umum
                     SUM(CASE WHEN is_3t = 1 THEN 1 ELSE 0 END) as total_3t,
                     SUM(CASE WHEN status_sekolah = "Negeri" THEN 1 ELSE 0 END) as total_negeri,
                     SUM(CASE WHEN status_sekolah = "Swasta" THEN 1 ELSE 0 END) as total_swasta,
