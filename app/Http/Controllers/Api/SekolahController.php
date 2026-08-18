@@ -22,10 +22,12 @@ class SekolahController extends Controller
      *   jenjang        - Filter bentuk pendidikan (SD, SMP, SMA, SMK, SLB, TK, dll)
      *   kode_kabupaten - Filter kode wilayah kabupaten (misal: 7271)
      *   is_3t          - Filter sekolah 3T (true/false)
+     *   search         - Cari nama sekolah (case-insensitive, partial match)
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Sekolah::latestSemester()
+        // Query tabel sekolah (SD, SMP, PAUD)
+        $querySekolah = Sekolah::latestSemester()
             ->whereNotNull('lintang')
             ->whereNotNull('bujur')
             ->where('lintang', '!=', 0)
@@ -40,24 +42,81 @@ class SekolahController extends Controller
             ]);
 
         if ($request->filled('jenjang')) {
-            $query->where('bentuk_pendidikan', $request->jenjang);
+            $querySekolah->where('bentuk_pendidikan', $request->jenjang);
         }
 
         if ($request->filled('kode_kabupaten')) {
-            $query->where('kode_kabupaten', $request->kode_kabupaten);
+            $querySekolah->where('kode_kabupaten', 'LIKE', "%{$request->kode_kabupaten}%");
         }
 
-        // Pakai boolean() agar "true", "1", "on" semua ditangani
         if ($request->boolean('is_3t')) {
-            $query->where('is_3t', true);
+            $querySekolah->where('is_3t', true);
         }
 
-        $sekolah = $query->limit(5000)->get();
+        if ($request->filled('search')) {
+            $querySekolah->where('nama', 'LIKE', "%{$request->search}%");
+        }
+
+        $sekolahData = $querySekolah->limit(5000)->get();
+
+        // Query tabel school_sma (SMA, SMK, SLB) - gabungkan dengan sekolah
+        $querySchoolSma = \DB::table('school_sma')
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->where('latitude', '!=', '')
+            ->where('longitude', '!=', '')
+            ->select([
+                'npsn',
+                'name as nama',
+                'grade as bentuk_pendidikan',
+                'address as alamat_jalan',
+                'kecamatan',
+                'city as kabupaten',
+                'kode_kabupaten',
+                'latitude as lintang',
+                'longitude as bujur',
+                'status as status_sekolah',
+            ]);
+
+        if ($request->filled('kode_kabupaten')) {
+            $querySchoolSma->where('kode_kabupaten', $request->kode_kabupaten);
+        }
+
+        if ($request->filled('jenjang')) {
+            $querySchoolSma->where('grade', 'LIKE', "%{$request->jenjang}%");
+        }
+
+        if ($request->filled('search')) {
+            $querySchoolSma->where('name', 'LIKE', "%{$request->search}%");
+        }
+
+        $schoolSmaData = $querySchoolSma->limit(5000)->get()->map(function ($item) {
+            // Transform ke format yang sama dengan SekolahResource
+            return (object) [
+                'npsn' => $item->npsn ?? null,
+                'nama' => $item->nama,
+                'bentuk_pendidikan' => $item->bentuk_pendidikan,
+                'alamat_jalan' => $item->alamat_jalan,
+                'kecamatan' => $item->kecamatan,
+                'kabupaten' => $item->kabupaten,
+                'kode_kabupaten' => $item->kode_kabupaten,
+                'lintang' => (float) $item->lintang,
+                'bujur' => (float) $item->bujur,
+                'is_3t' => false,
+                'is_sekolah_alam' => false,
+                'jumlah_siswa' => 0,
+                'daya_tampung' => 0,
+                'status_sekolah' => $item->status_sekolah ?? 'Negeri',
+            ];
+        });
+
+        // Gabungkan 2 collection
+        $merged = $sekolahData->concat($schoolSmaData);
 
         return response()->json([
             'status' => 'success',
-            'total'  => $sekolah->count(),
-            'data'   => SekolahResource::collection($sekolah),
+            'total'  => $merged->count(),
+            'data'   => SekolahResource::collection($merged),
         ]);
     }
 

@@ -20,54 +20,26 @@ class SekolahResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'sekolah_id'       => $this->sekolah_id,
-            'semester_id'      => $this->semester_id,
+            'sekolah_id'       => $this->sekolah_id ?? null,
+            'semester_id'      => $this->semester_id ?? null,
             'nama'             => $this->nama,
-            'npsn'             => $this->npsn,
+            'npsn'             => $this->npsn ?? null,
             'bentuk_pendidikan' => $this->bentuk_pendidikan,
-            'status_sekolah'   => $this->status_sekolah,
-            'alamat_jalan'     => $this->alamat_jalan,
-            'dusun'            => $this->dusun,
-            'desa_kelurahan'   => $this->desa_kelurahan,
-            'kode_kabupaten'   => $this->kode_kabupaten,
-            'nama_kabupaten'   => $this->kabupaten, // Nama kabupaten sudah ada di kolom ini
-            'kode_kecamatan'   => $this->kode_kecamatan,
-            'kode_provinsi'    => $this->kode_provinsi,
+            'status_sekolah'   => $this->status_sekolah ?? 'Negeri',
+            'alamat_jalan'     => $this->alamat_jalan ?? null,
+            'kecamatan'        => $this->kecamatan ?? null,
+            'kabupaten'        => $this->kabupaten ?? null,
+            'kode_kabupaten'   => $this->kode_kabupaten ?? null,
+            'kode_kecamatan'   => $this->kode_kecamatan ?? null,
 
-            'lintang'          => $this->lintang,
-            'bujur'            => $this->bujur,
-            'is_3t'            => $this->is_3t,
-            'is_sekolah_alam'  => $this->is_sekolah_alam,
+            'lintang'          => $this->lintang ?? null,
+            'bujur'            => $this->bujur ?? null,
+            'is_3t'            => $this->is_3t ?? false,
+            'is_sekolah_alam'  => $this->is_sekolah_alam ?? false,
 
             // Data kapasitas
-            'jumlah_siswa'     => $this->jumlah_siswa,
-            'daya_tampung'     => $this->daya_tampung,
-
-            // Timestamps
-            'create_date'      => $this->create_date?->toIso8601String(),
-            'last_update'      => $this->last_update?->toIso8601String(),
-
-            // Relasi lain jika di-load (misalnya detailSma)
-            'detail_sma' => $this->whenLoaded('detailSma', function() {
-                $ds = $this->detailSma;
-                return $ds ? [
-                    'id' => $ds->id,
-                    'name' => $ds->name,
-                    'grade' => $ds->grade,
-                    'status' => $ds->status,
-                    'kecamatan' => $ds->kecamatan,
-                    'city' => $ds->city,
-                    'kepsek' => $ds->kepsek,
-                    'nip_kepsek' => $ds->nip_kepsek,
-                    'no_hp_kepsek' => $ds->no_hp_kepsek,
-                    'status_kepsek' => $ds->status_kepsek,
-                    'address' => $ds->address,
-                    'npsn' => $ds->npsn,
-                    'latitude' => $ds->latitude,
-                    'longitude' => $ds->longitude,
-                    'polygon' => $ds->polygon,
-                ] : null;
-            }),
+            'jumlah_siswa'     => $this->jumlah_siswa ?? 0,
+            'daya_tampung'     => $this->daya_tampung ?? 0,
         ];
     }
 }
