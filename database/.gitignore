@@ -1,1 +1,6 @@
 *.sqlite*
+
+# File data besar — jangan di-push ke git
+seeders/backbone_sekolah.xlsx
+seeders/backbone_sekolah.sql
+seeders/sekolah_import.sql
