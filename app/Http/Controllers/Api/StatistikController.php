@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Sekolah;
-use App\Models\SchoolSma;
 use Illuminate\Http\JsonResponse;
 
 class StatistikController extends Controller
@@ -51,7 +50,7 @@ class StatistikController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'data'   => $data,
+            'data' => $data,
         ]);
     }
 
@@ -83,43 +82,22 @@ class StatistikController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'data'   => $data,
+            'data' => $data,
         ]);
     }
 
     /**
-     * Statistik jumlah sekolah SMA/SMK/SLB per grade dari tabel school_sma.
+     * Statistik jumlah sekolah SMA/SMK/SLB per jenjang dari tabel sekolah (Dapodik).
      *
-     * Digunakan untuk Card Provinsi di dashboard publik yang menampilkan
-     * ringkasan sekolah menengah kewenangan Provinsi Sulawesi Tengah.
-     *
-     * FALLBACK: Jika tabel school_sma kosong, ambil dari tabel sekolah.
+     * Sumber utama: tabel `sekolah` (backbone 11.642 records) — lebih lengkap.
+     * Tabel `school_sma` hanya menyimpan data tambahan (polygon, kepsek, dll),
+     * bukan sumber statistik.
      *
      * GET /api/v1/statistik/sma-provinsi
      */
     public function byGradeProvinsi(): JsonResponse
     {
-        // Cache 1 jam — data ini jarang berubah, tidak perlu query tiap request
         $data = \Cache::remember('statistik_sma_provinsi', 3600, function () {
-            // Cek dulu apakah ada data di school_sma
-            $countSma = SchoolSma::count();
-            
-            if ($countSma > 0) {
-                // Gunakan tabel school_sma (data lengkap dengan polygon, dll)
-                return SchoolSma::selectRaw('
-                        grade as bentuk_pendidikan,
-                        COUNT(*) as total,
-                        SUM(CASE WHEN status = "Negeri" THEN 1 ELSE 0 END) as total_negeri,
-                        SUM(CASE WHEN status = "Swasta" THEN 1 ELSE 0 END) as total_swasta
-                    ')
-                    ->whereNotNull('grade')
-                    ->groupBy('grade')
-                    ->orderByRaw('FIELD(grade, "SMA", "SMK", "SLB", "SMTK")')
-                    ->get()
-                    ->toArray();
-            }
-            
-            // Fallback: Gunakan tabel sekolah (data Dapodik)
             return Sekolah::latestSemester()
                 ->selectRaw('
                     bentuk_pendidikan,
@@ -127,16 +105,16 @@ class StatistikController extends Controller
                     SUM(CASE WHEN status_sekolah = "Negeri" THEN 1 ELSE 0 END) as total_negeri,
                     SUM(CASE WHEN status_sekolah = "Swasta" THEN 1 ELSE 0 END) as total_swasta
                 ')
-                ->whereIn('bentuk_pendidikan', ['SMA', 'SMK', 'SLB'])
+                ->whereIn('bentuk_pendidikan', ['SMA', 'SMK', 'SLB', 'MA', 'SMTK'])
                 ->groupBy('bentuk_pendidikan')
-                ->orderByRaw('FIELD(bentuk_pendidikan, "SMA", "SMK", "SLB")')
+                ->orderByRaw('FIELD(bentuk_pendidikan, "SMA", "SMK", "SLB", "MA", "SMTK")')
                 ->get()
                 ->toArray();
         });
 
         return response()->json([
             'status' => 'success',
-            'data'   => $data,
+            'data' => $data,
         ]);
     }
 }

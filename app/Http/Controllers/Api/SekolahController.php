@@ -23,6 +23,7 @@ class SekolahController extends Controller
      *   kode_kabupaten - Filter kode wilayah kabupaten (misal: 7271)
      *   is_3t          - Filter sekolah 3T (true/false)
      *   search         - Cari nama sekolah (case-insensitive, partial match)
+     *   wewenang       - Filter wewenang kabupaten/kota (true = hanya PAUD-SMP)
      */
     public function index(Request $request): JsonResponse
     {
@@ -55,6 +56,11 @@ class SekolahController extends Controller
 
         if ($request->filled('search')) {
             $querySekolah->where('nama', 'LIKE', "%{$request->search}%");
+        }
+
+        // Filter wewenang kabupaten/kota (hanya PAUD-SMP)
+        if ($request->boolean('wewenang')) {
+            $querySekolah->whereIn('bentuk_pendidikan', ['PAUD', 'TK', 'KB', 'TPA', 'SPS', 'SD', 'SMP']);
         }
 
         $sekolahData = $querySekolah->limit(5000)->get();
@@ -90,25 +96,30 @@ class SekolahController extends Controller
             $querySchoolSma->where('name', 'LIKE', "%{$request->search}%");
         }
 
-        $schoolSmaData = $querySchoolSma->limit(5000)->get()->map(function ($item) {
-            // Transform ke format yang sama dengan SekolahResource
-            return (object) [
-                'npsn' => $item->npsn ?? null,
-                'nama' => $item->nama,
-                'bentuk_pendidikan' => $item->bentuk_pendidikan,
-                'alamat_jalan' => $item->alamat_jalan,
-                'kecamatan' => $item->kecamatan,
-                'kabupaten' => $item->kabupaten,
-                'kode_kabupaten' => $item->kode_kabupaten,
-                'lintang' => (float) $item->lintang,
-                'bujur' => (float) $item->bujur,
-                'is_3t' => false,
-                'is_sekolah_alam' => false,
-                'jumlah_siswa' => 0,
-                'daya_tampung' => 0,
-                'status_sekolah' => $item->status_sekolah ?? 'Negeri',
-            ];
-        });
+        // Jika filter wewenang aktif, skip query school_sma (karena SMA/SMK/SLB bukan wewenang kabupaten)
+        if ($request->boolean('wewenang')) {
+            $schoolSmaData = collect([]);
+        } else {
+            $schoolSmaData = $querySchoolSma->limit(5000)->get()->map(function ($item) {
+                // Transform ke format yang sama dengan SekolahResource
+                return (object) [
+                    'npsn' => $item->npsn ?? null,
+                    'nama' => $item->nama,
+                    'bentuk_pendidikan' => $item->bentuk_pendidikan,
+                    'alamat_jalan' => $item->alamat_jalan,
+                    'kecamatan' => $item->kecamatan,
+                    'kabupaten' => $item->kabupaten,
+                    'kode_kabupaten' => $item->kode_kabupaten,
+                    'lintang' => (float) $item->lintang,
+                    'bujur' => (float) $item->bujur,
+                    'is_3t' => false,
+                    'is_sekolah_alam' => false,
+                    'jumlah_siswa' => 0,
+                    'daya_tampung' => 0,
+                    'status_sekolah' => $item->status_sekolah ?? 'Negeri',
+                ];
+            });
+        }
 
         // Gabungkan 2 collection
         $merged = $sekolahData->concat($schoolSmaData);
