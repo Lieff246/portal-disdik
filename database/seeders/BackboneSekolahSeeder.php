@@ -37,8 +37,8 @@ class BackboneSekolahSeeder extends Seeder
         $sql = preg_replace('/CREATE TABLE `.*?` \(.*?\).*?;/s', '', $sql);
         $sql = preg_replace('/ALTER TABLE `.*?`.*?;/s', '', $sql);
 
-        // Ambil hanya INSERT query
-        preg_match_all('/INSERT INTO `.*?`.*?VALUES.*?;/s', $sql, $matches);
+        // Ambil INSERT dan INSERT IGNORE query
+        preg_match_all('/INSERT\s+(?:IGNORE\s+)?INTO\s+`.*?`.*?VALUES.*?;/s', $sql, $matches);
 
         if (empty($matches[0])) {
             $this->command->error("❌ Tidak ada INSERT statement ditemukan di file SQL.");
