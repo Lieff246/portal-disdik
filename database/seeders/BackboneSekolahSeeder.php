@@ -33,19 +33,34 @@ class BackboneSekolahSeeder extends Seeder
             return;
         }
 
+        @ini_set('memory_limit', '1024M');
+        @ini_set('pcre.backtrack_limit', '100000000');
+
         $this->command->info("📥 Importing data dari: {$file}");
 
         $sql = File::get($path);
 
         // Hapus DROP TABLE, CREATE TABLE, ALTER TABLE agar tidak merusak struktur
-        $sql = preg_replace('/DROP TABLE IF EXISTS `.*?`;/s', '', $sql);
-        $sql = preg_replace('/CREATE TABLE `.*?` \(.*?\).*?;/s', '', $sql);
-        $sql = preg_replace('/ALTER TABLE `.*?`.*?;/s', '', $sql);
+        $sql = preg_replace('/DROP TABLE IF EXISTS `.*?`;/si', '', $sql);
+        $sql = preg_replace('/CREATE TABLE `.*?` \(.*?\).*?;/si', '', $sql);
+        $sql = preg_replace('/ALTER TABLE `.*?`.*?;/si', '', $sql);
 
-        // Ambil INSERT dan INSERT IGNORE query
-        preg_match_all('/INSERT\s+(?:IGNORE\s+)?INTO\s+`.*?`.*?VALUES.*?;/s', $sql, $matches);
+        // Ekstrak semua INSERT statement
+        preg_match_all('/INSERT\s+(?:IGNORE\s+)?INTO\s+`?(\w+)`?.*?VALUES\s*\(.*?\);/si', $sql, $matches);
 
-        if (empty($matches[0])) {
+        // Fallback jika regex preg_match_all terkena limit backtrack: split manual
+        $statements = $matches[0] ?? [];
+        if (empty($statements)) {
+            $rawChunks = preg_split('/;\s*[\r\n]+/', $sql);
+            foreach ($rawChunks as $chunk) {
+                $trimmed = trim($chunk);
+                if (stripos($trimmed, 'INSERT') === 0) {
+                    $statements[] = $trimmed . ';';
+                }
+            }
+        }
+
+        if (empty($statements)) {
             $this->command->error("❌ Tidak ada INSERT statement ditemukan di file SQL.");
             return;
         }
@@ -55,19 +70,19 @@ class BackboneSekolahSeeder extends Seeder
         $inserted = 0;
         $errors   = 0;
 
-        foreach ($matches[0] as $insertQuery) {
+        foreach ($statements as $insertQuery) {
             try {
                 // INSERT IGNORE agar data duplikat dilewati
                 $insertQuery = preg_replace('/INSERT INTO/i', 'INSERT IGNORE INTO', $insertQuery);
 
                 // Pastikan insert ke tabel sekolah
-                $insertQuery = preg_replace('/INSERT IGNORE INTO `\w+`/i', 'INSERT IGNORE INTO `sekolah`', $insertQuery);
+                $insertQuery = preg_replace('/INSERT IGNORE INTO `?\w+`?/i', 'INSERT IGNORE INTO `sekolah`', $insertQuery);
 
                 DB::unprepared($insertQuery);
                 $inserted++;
             } catch (\Exception $e) {
                 $errors++;
-                $this->command->error("Error: " . $e->getMessage());
+                $this->command->error("Error batch: " . $e->getMessage());
             }
         }
 
@@ -93,6 +108,33 @@ class BackboneSekolahSeeder extends Seeder
         foreach ($mapping as $lama => $bps) {
             DB::table('sekolah')
                 ->where('kode_kabupaten', 'LIKE', $lama . '%')
+                ->update(['kode_kabupaten' => $bps]);
+        }
+
+        // Cleanup data anomali / sisa kode yang bukan 4 digit angka
+        $namaToBps = [
+            'Kota Palu' => '7271',
+            'Sigi' => '7210',
+            'Donggala' => '7203',
+            'Parigi' => '7208',
+            'Poso' => '7202',
+            'Tojo' => '7209',
+            'Morowali Utara' => '7212',
+            'Morowali' => '7206',
+            'Banggai Laut' => '7211',
+            'Banggai Kepulauan' => '7207',
+            'Banggai' => '7201',
+            'Tolitoli' => '7204',
+            'Buol' => '7205',
+        ];
+        foreach ($namaToBps as $nama => $bps) {
+            DB::table('sekolah')
+                ->where('kabupaten', 'LIKE', "%{$nama}%")
+                ->where(function ($q) {
+                    $q->where('kode_kabupaten', 'NOT REGEXP', '^[0-9]{4}$')
+                      ->orWhere('kode_kabupaten', 'kode_kecamatan')
+                      ->orWhereNull('kode_kabupaten');
+                })
                 ->update(['kode_kabupaten' => $bps]);
         }
 
