@@ -23,7 +23,12 @@ class BackboneSekolahSeeder extends Seeder
         $path = database_path('seeders/' . $file);
 
         if (!File::exists($path)) {
-            $this->command->warn("⚠️  File '{$file}' tidak ditemukan di database/seeders/");
+            $file = 'sekolah.sql';
+            $path = database_path('seeders/' . $file);
+        }
+
+        if (!File::exists($path)) {
+            $this->command->warn("⚠️  File 'backbone_sekolah.sql' atau 'sekolah.sql' tidak ditemukan di database/seeders/");
             $this->command->warn("   Download dari Google Drive/shared folder terlebih dahulu.");
             return;
         }
@@ -67,6 +72,32 @@ class BackboneSekolahSeeder extends Seeder
         }
 
         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+
+        $this->command->info("🔄 Mengonversi kode_kabupaten format lama (18xxxx) ke BPS 4 digit (72xx)...");
+        $mapping = [
+            '180100' => '7207', // Kab. Banggai Kepulauan
+            '180200' => '7203', // Kab. Donggala
+            '180300' => '7202', // Kab. Poso
+            '180400' => '7201', // Kab. Banggai
+            '180500' => '7205', // Kab. Buol
+            '180600' => '7204', // Kab. Tolitoli
+            '180700' => '7206', // Kab. Morowali
+            '180800' => '7208', // Kab. Parigi Moutong
+            '180900' => '7209', // Kab. Tojo Una-Una
+            '181000' => '7210', // Kab. Sigi
+            '181100' => '7211', // Kab. Banggai Laut
+            '181200' => '7212', // Kab. Morowali Utara
+            '186000' => '7271', // Kota Palu
+        ];
+
+        foreach ($mapping as $lama => $bps) {
+            DB::table('sekolah')
+                ->where('kode_kabupaten', 'LIKE', $lama . '%')
+                ->update(['kode_kabupaten' => $bps]);
+        }
+
+        // Flush cache agar data statistik ter-refresh
+        \Illuminate\Support\Facades\Cache::flush();
 
         $total = DB::table('sekolah')->count();
 

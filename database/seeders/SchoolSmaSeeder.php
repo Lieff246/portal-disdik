@@ -53,6 +53,30 @@ class SchoolSmaSeeder extends Seeder
         $this->command->info("💾 Inserting data...");
         DB::unprepared($insertSQL);
 
+        // Update kode_kabupaten di school_sma
+        $this->command->info("🔄 Mengupdate kode_kabupaten di school_sma...");
+        $mappingKabupaten = [
+            'Kab. Poso' => '7202',
+            'Kab. Donggala' => '7203',
+            'Kab. Tolitoli' => '7204',
+            'Kab. Buol' => '7205',
+            'Kab. Morowali' => '7206',
+            'Kab. Banggai Kepulauan' => '7207',
+            'Kab. Parigi Moutong' => '7208',
+            'Kab. Tojo Una-Una' => '7209',
+            'Kab. Sigi' => '7210',
+            'Kab. Banggai Laut' => '7211',
+            'Kab. Morowali Utara' => '7212',
+            'Kota Palu' => '7271',
+            'Kab. Banggai' => '7201',
+        ];
+
+        foreach ($mappingKabupaten as $namaKabupaten => $kode) {
+            DB::table('school_sma')
+                ->where('city', 'LIKE', "%{$namaKabupaten}%")
+                ->update(['kode_kabupaten' => $kode]);
+        }
+
         // Count hasil
         $count = DB::table('school_sma')->count();
         $this->command->info("✅ Selesai! Total data: {$count} records");

@@ -19,8 +19,8 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             CabangDinasSeeder::class,
             UserSeeder::class,
-            DataSekolahImporterSeeder::class,
-            SchoolSmaSeeder::class, // ← Data SMA/SMK/SLB (466 records)
+            BackboneSekolahSeeder::class, // ← Data sekolah lengkap (11.642 records) + auto-convert kode BPS
+            SchoolSmaSeeder::class,       // ← Data SMA/SMK/SLB (466 records) + polygon
         ]);
     }
 }
