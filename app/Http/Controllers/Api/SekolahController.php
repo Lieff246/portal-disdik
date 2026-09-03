@@ -27,108 +27,114 @@ class SekolahController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        // Query tabel sekolah (SD, SMP, PAUD)
-        $querySekolah = Sekolah::latestSemester()
-            ->whereNotNull('lintang')
-            ->whereNotNull('bujur')
-            ->where('lintang', '!=', 0)
-            ->where('bujur', '!=', 0)
-            ->select([
-                'npsn', 'nama', 'bentuk_pendidikan',
-                'alamat_jalan', 'kecamatan', 'kabupaten', 'kode_kabupaten',
-                'lintang', 'bujur',
-                'is_3t', 'is_sekolah_alam',
-                'jumlah_siswa', 'daya_tampung', 'status_sekolah',
-                'akreditasi', 'akses_internet',
-            ]);
+        $cacheKey = 'sekolah_markers_' . md5(json_encode($request->all()));
 
-        if ($request->filled('jenjang')) {
-            $querySekolah->where('bentuk_pendidikan', $request->jenjang);
-        }
+        $response = \Cache::remember($cacheKey, 600, function () use ($request) {
+            // Query tabel sekolah (SD, SMP, PAUD)
+            $querySekolah = Sekolah::latestSemester()
+                ->whereNotNull('lintang')
+                ->whereNotNull('bujur')
+                ->where('lintang', '!=', 0)
+                ->where('bujur', '!=', 0)
+                ->select([
+                    'npsn', 'nama', 'bentuk_pendidikan',
+                    'alamat_jalan', 'kecamatan', 'kabupaten', 'kode_kabupaten',
+                    'lintang', 'bujur',
+                    'is_3t', 'is_sekolah_alam',
+                    'jumlah_siswa', 'daya_tampung', 'status_sekolah',
+                    'akreditasi', 'akses_internet',
+                ]);
 
-        if ($request->filled('kode_kabupaten')) {
-            $querySekolah->where('kode_kabupaten', 'LIKE', "%{$request->kode_kabupaten}%");
-        }
+            if ($request->filled('jenjang')) {
+                $querySekolah->where('bentuk_pendidikan', $request->jenjang);
+            }
 
-        if ($request->boolean('is_3t')) {
-            $querySekolah->where('is_3t', true);
-        }
+            if ($request->filled('kode_kabupaten')) {
+                $querySekolah->where('kode_kabupaten', $request->kode_kabupaten);
+            }
 
-        if ($request->filled('search')) {
-            $querySekolah->where('nama', 'LIKE', "%{$request->search}%");
-        }
+            if ($request->boolean('is_3t')) {
+                $querySekolah->where('is_3t', true);
+            }
 
-        // Filter wewenang kabupaten/kota (hanya PAUD-SMP)
-        if ($request->boolean('wewenang')) {
-            $querySekolah->whereIn('bentuk_pendidikan', ['PAUD', 'TK', 'KB', 'TPA', 'SPS', 'SD', 'SMP']);
-        }
+            if ($request->filled('search')) {
+                $querySekolah->where('nama', 'LIKE', "%{$request->search}%");
+            }
 
-        $sekolahData = $querySekolah->limit(5000)->get();
+            // Filter wewenang kabupaten/kota (hanya PAUD-SMP)
+            if ($request->boolean('wewenang')) {
+                $querySekolah->whereIn('bentuk_pendidikan', ['PAUD', 'TK', 'KB', 'TPA', 'SPS', 'SD', 'SMP']);
+            }
 
-        // Query tabel school_sma (SMA, SMK, SLB) - gabungkan dengan sekolah
-        $querySchoolSma = \DB::table('school_sma')
-            ->whereNotNull('latitude')
-            ->whereNotNull('longitude')
-            ->where('latitude', '!=', '')
-            ->where('longitude', '!=', '')
-            ->select([
-                'npsn',
-                'name as nama',
-                'grade as bentuk_pendidikan',
-                'address as alamat_jalan',
-                'kecamatan',
-                'city as kabupaten',
-                'kode_kabupaten',
-                'latitude as lintang',
-                'longitude as bujur',
-                'status as status_sekolah',
-            ]);
+            $sekolahData = $querySekolah->limit(5000)->get();
 
-        if ($request->filled('kode_kabupaten')) {
-            $querySchoolSma->where('kode_kabupaten', $request->kode_kabupaten);
-        }
+            // Query tabel school_sma (SMA, SMK, SLB) - gabungkan dengan sekolah
+            $querySchoolSma = \DB::table('school_sma')
+                ->whereNotNull('latitude')
+                ->whereNotNull('longitude')
+                ->where('latitude', '!=', '')
+                ->where('longitude', '!=', '')
+                ->select([
+                    'npsn',
+                    'name as nama',
+                    'grade as bentuk_pendidikan',
+                    'address as alamat_jalan',
+                    'kecamatan',
+                    'city as kabupaten',
+                    'kode_kabupaten',
+                    'latitude as lintang',
+                    'longitude as bujur',
+                    'status as status_sekolah',
+                ]);
 
-        if ($request->filled('jenjang')) {
-            $querySchoolSma->where('grade', 'LIKE', "%{$request->jenjang}%");
-        }
+            if ($request->filled('kode_kabupaten')) {
+                $querySchoolSma->where('kode_kabupaten', $request->kode_kabupaten);
+            }
 
-        if ($request->filled('search')) {
-            $querySchoolSma->where('name', 'LIKE', "%{$request->search}%");
-        }
+            if ($request->filled('jenjang')) {
+                $querySchoolSma->where('grade', 'LIKE', "%{$request->jenjang}%");
+            }
 
-        // Jika filter wewenang aktif, skip query school_sma (karena SMA/SMK/SLB bukan wewenang kabupaten)
-        if ($request->boolean('wewenang')) {
-            $schoolSmaData = collect([]);
-        } else {
-            $schoolSmaData = $querySchoolSma->limit(5000)->get()->map(function ($item) {
-                // Transform ke format yang sama dengan SekolahResource
-                return (object) [
-                    'npsn' => $item->npsn ?? null,
-                    'nama' => $item->nama,
-                    'bentuk_pendidikan' => $item->bentuk_pendidikan,
-                    'alamat_jalan' => $item->alamat_jalan,
-                    'kecamatan' => $item->kecamatan,
-                    'kabupaten' => $item->kabupaten,
-                    'kode_kabupaten' => $item->kode_kabupaten,
-                    'lintang' => (float) $item->lintang,
-                    'bujur' => (float) $item->bujur,
-                    'is_3t' => false,
-                    'is_sekolah_alam' => false,
-                    'jumlah_siswa' => 0,
-                    'daya_tampung' => 0,
-                    'status_sekolah' => $item->status_sekolah ?? 'Negeri',
-                ];
-            });
-        }
+            if ($request->filled('search')) {
+                $querySchoolSma->where('name', 'LIKE', "%{$request->search}%");
+            }
 
-        // Gabungkan 2 collection
-        $merged = $sekolahData->concat($schoolSmaData);
+            // Jika filter wewenang aktif, skip query school_sma (karena SMA/SMK/SLB bukan wewenang kabupaten)
+            if ($request->boolean('wewenang')) {
+                $schoolSmaData = collect([]);
+            } else {
+                $schoolSmaData = $querySchoolSma->limit(5000)->get()->map(function ($item) {
+                    // Transform ke format yang sama dengan SekolahResource
+                    return (object) [
+                        'npsn' => $item->npsn ?? null,
+                        'nama' => $item->nama,
+                        'bentuk_pendidikan' => $item->bentuk_pendidikan,
+                        'alamat_jalan' => $item->alamat_jalan,
+                        'kecamatan' => $item->kecamatan,
+                        'kabupaten' => $item->kabupaten,
+                        'kode_kabupaten' => $item->kode_kabupaten,
+                        'lintang' => (float) $item->lintang,
+                        'bujur' => (float) $item->bujur,
+                        'is_3t' => false,
+                        'is_sekolah_alam' => false,
+                        'jumlah_siswa' => 0,
+                        'daya_tampung' => 0,
+                        'status_sekolah' => $item->status_sekolah ?? 'Negeri',
+                    ];
+                });
+            }
 
-        return response()->json([
-            'status' => 'success',
-            'total'  => $merged->count(),
-            'data'   => SekolahResource::collection($merged),
-        ]);
+            // Gabungkan 2 collection
+            $merged = $sekolahData->concat($schoolSmaData);
+
+            return [
+                'status' => 'success',
+                'total'  => $merged->count(),
+                'data'   => SekolahResource::collection($merged)->resolve(),
+            ];
+        });
+
+        return response()->json($response);
     }
 
     /**
